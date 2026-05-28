@@ -29,6 +29,10 @@ header p { margin: 0; font-size: 15px; opacity: 0.95; line-height: 1.5; }
   gap: 10px;
   margin-bottom: 16px;
 }
+#status { font-size: 14px; font-weight: 700; }
+#status.loading { color: #b45309; }
+#status.ok { color: #047857; }
+#status.err { color: #b91c1c; }
 .mode-bar label { font-size: 14px; font-weight: 700; }
 .flow {
   display: grid;
@@ -72,6 +76,7 @@ button, .btn-file {
   font-weight: 700;
   font-family: inherit;
 }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.big { padding: 16px 24px; font-size: 17px; }
 button.secondary { background: #475569; }
 button.light { background: #fff; color: #c41e3a; border: 2px solid #c41e3a; }
@@ -154,37 +159,42 @@ pre {
   max-height: 300px;
   font-size: 11px;
 }
-.empty {
+.empty, .loading-box {
   text-align: center;
   padding: 40px 20px;
   color: #64748b;
   background: #fff;
   border-radius: 14px;
+  line-height: 1.7;
 }
+.loading-box { color: #b45309; }
+.local-only { display: none; }
+body.local-mode .local-only { display: inline-block; }
+body.local-mode .online-only { display: none; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>廣運50週年 · 問答內容編輯（簡易版）</h1>
-  <p>不用寫程式，只要改文字。完成後按「下載檔案」交給負責更新網站的同事即可。</p>
+  <p id="headerSub">開啟後會自動載入最新問答，可直接修改或新增。完成後按「下載檔案」交給負責更新網站的同事。</p>
 </header>
 
 <div class="container">
 
 <div class="mode-bar">
-  <span id="status">請先開啟檔案</span>
+  <span id="status" class="loading">正在載入問答資料…</span>
   <label><input type="checkbox" id="advancedToggle" /> 進階模式（工程師用）</label>
 </div>
 
-<div class="flow">
+<div class="flow" id="flowSteps">
   <div class="flow-step">
     <div class="num">1</div>
-    <p><strong>開啟檔案</strong><br>選 knowledge.json</p>
+    <p><strong>自動載入</strong><br>網站已帶入最新問答</p>
   </div>
   <div class="flow-step">
     <div class="num">2</div>
-    <p><strong>修改問答</strong><br>點題目展開編輯</p>
+    <p><strong>修改或新增</strong><br>點題目展開，或按「新增」</p>
   </div>
   <div class="flow-step">
     <div class="num">3</div>
@@ -193,22 +203,21 @@ pre {
 </div>
 
 <div class="hint-box" id="handoffHint">
-  <strong>給非工程師同事：</strong> 您只需要改「問題」「關鍵字」「回答」三個欄位。完成後按綠色區的「下載檔案」，用 Line 或 Email 傳給負責 <strong>chatbot 網站</strong> 的同事，對方會幫您更新上線。
+  <strong>給非工程師同事：</strong> 不用準備任何檔案。打開此網頁後會<strong>自動載入</strong>現有問答，您只要改「問題」「關鍵字」「回答」，或按「＋ 新增一則問答」。完成後按「下載檔案」，用 Line 或 Email 傳給負責 <strong>chatbot 網站</strong> 的同事。
 </div>
 
 <div class="actions">
-  <label class="btn-file">
-    <button type="button" class="big" onclick="document.getElementById('fileInput').click()">📂 ① 開啟檔案</button>
-    <input type="file" id="fileInput" accept=".json" onchange="loadFromFile(event)" />
-  </label>
-  <button type="button" class="light big" onclick="addFaq()">＋ 新增一則問答</button>
-  <button type="button" class="big" onclick="exportJson()">⬇ ② 下載檔案（knowledge.json）</button>
+  <button type="button" class="light big" id="btnAdd" disabled onclick="addFaq()">＋ 新增一則問答</button>
+  <button type="button" class="big" id="btnExport" disabled onclick="exportJson()">⬇ 下載檔案（knowledge.json）</button>
+  <button type="button" class="secondary local-only" onclick="document.getElementById('fileInput').click()">📂 從電腦開啟檔案</button>
+  <button type="button" class="secondary online-only" id="btnReload" onclick="loadFromUrl(true)">🔄 重新載入最新版</button>
+  <input type="file" id="fileInput" accept=".json" class="local-only" style="display:none" onchange="loadFromFile(event)" />
 </div>
 
-<input type="search" class="search" id="searchBox" placeholder="🔍 搜尋問題或分類…" oninput="renderList()" />
+<input type="search" class="search" id="searchBox" placeholder="🔍 搜尋問題或分類…" oninput="renderList()" disabled />
 
 <div id="faqList">
-  <div class="empty">請點上方「開啟檔案」，選擇 <strong>knowledge.json</strong><br><br>檔案通常在：<br>chatbot2 資料夾內，或請負責人傳給您</div>
+  <div class="loading-box">正在從網站載入問答，請稍候…</div>
 </div>
 
 <div id="jsonPanel" class="advanced-only">
@@ -222,6 +231,9 @@ pre {
 <script>
 let knowledge = null;
 let openIndex = -1;
+let loadPromise = null;
+
+const KNOWLEDGE_URL = "./knowledge.json";
 
 const CATEGORY_PRESETS = [
   "基本資訊", "交通方式", "報到", "闖關", "餐飲", "親子手作流程",
@@ -229,10 +241,20 @@ const CATEGORY_PRESETS = [
   "飲水與設施", "廣運50週年紀念品與闖關禮", "聯絡福利委員會", "轉人工", "其他", "系統建議"
 ];
 
+const isHttp = location.protocol === "http:" || location.protocol === "https:";
+
 document.getElementById("advancedToggle").addEventListener("change", (e) => {
   document.body.classList.toggle("advanced", e.target.checked);
   renderList();
 });
+
+if (!isHttp) {
+  document.body.classList.add("local-mode");
+  document.getElementById("headerSub").textContent =
+    "本機開啟時請用下方「從電腦開啟檔案」選 knowledge.json；建議同事改用線上網址，可自動載入。";
+  document.querySelector("#flowSteps .flow-step:first-child p").innerHTML =
+    "<strong>開啟檔案</strong><br>選 knowledge.json";
+}
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -240,16 +262,70 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function setStatus(text) {
-  document.getElementById("status").textContent = text;
+function setStatus(text, kind) {
+  const el = document.getElementById("status");
+  el.textContent = text;
+  el.className = kind || "";
+}
+
+function setUiReady(ready) {
+  document.getElementById("btnAdd").disabled = !ready;
+  document.getElementById("btnExport").disabled = !ready;
+  document.getElementById("searchBox").disabled = !ready;
 }
 
 function ensureKnowledge(data) {
   if (!data || typeof data !== "object") throw new Error("檔案格式不對");
   if (!Array.isArray(data.faqs)) data.faqs = [];
   knowledge = data;
-  setStatus("已載入 " + knowledge.faqs.length + " 則問答");
+  setStatus("已載入 " + knowledge.faqs.length + " 則問答（可直接編輯）", "ok");
+  setUiReady(true);
   renderList();
+}
+
+function showListMessage(html, className) {
+  document.getElementById("faqList").innerHTML =
+    '<div class="' + (className || "empty") + '">' + html + "</div>";
+}
+
+function loadFromUrl(force) {
+  if (!isHttp) {
+    showListMessage(
+      "請使用線上網址開啟此頁，或按「從電腦開啟檔案」選擇 knowledge.json",
+      "empty"
+    );
+    setStatus("本機模式：請手動開啟檔案", "err");
+    return Promise.resolve(false);
+  }
+
+  setStatus(force ? "正在重新載入…" : "正在載入問答資料…", "loading");
+  setUiReady(false);
+  showListMessage("正在從網站載入問答，請稍候…", "loading-box");
+
+  const url = KNOWLEDGE_URL + "?v=" + Date.now();
+  loadPromise = fetch(url, { cache: "no-store" })
+    .then((r) => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
+    .then((data) => {
+      ensureKnowledge(data);
+      return true;
+    })
+    .catch((e) => {
+      knowledge = null;
+      setUiReady(false);
+      setStatus("載入失敗，請按「重新載入」或聯絡負責人", "err");
+      showListMessage(
+        "無法載入問答資料。<br><br>請確認網址正確，或請負責人更新 GitHub 上的 <strong>knowledge.json</strong>。<br><br>" +
+        "<button type=\"button\" class=\"big\" onclick=\"loadFromUrl(true)\">再試一次</button>",
+        "empty"
+      );
+      console.error("load knowledge.json failed", e);
+      return false;
+    });
+
+  return loadPromise;
 }
 
 function loadFromFile(event) {
@@ -273,9 +349,10 @@ function categoryOptions(selected) {
   ).join("") + `<option value="_custom"${!CATEGORY_PRESETS.includes(selected) && selected ? " selected" : ""}>其他（自行輸入）</option>`;
 }
 
-function addFaq() {
+async function addFaq() {
+  if (!knowledge && loadPromise) await loadPromise;
   if (!knowledge) {
-    alert("請先按「開啟檔案」");
+    alert("問答尚未載入完成，請稍候或按「重新載入最新版」");
     return;
   }
   knowledge.faqs.unshift({
@@ -311,7 +388,7 @@ function saveField(index, field, value) {
     knowledge.faqs[index][field] = value;
   }
   renderJson();
-  setStatus("已儲存變更（共 " + knowledge.faqs.length + " 則）· 記得下載檔案");
+  setStatus("已儲存變更（共 " + knowledge.faqs.length + " 則）· 記得下載檔案", "ok");
 }
 
 function getExportData() {
@@ -348,7 +425,7 @@ function renderList() {
     });
 
   if (!items.length) {
-    list.innerHTML = '<div class="empty">找不到符合的問答</div>';
+    list.innerHTML = '<div class="empty">目前沒有問答。請按上方「＋ 新增一則問答」。</div>';
     renderJson();
     return;
   }
@@ -420,7 +497,7 @@ function onCategorySelect(sel) {
 
 function exportJson() {
   if (!knowledge) {
-    alert("請先開啟檔案");
+    alert("問答尚未載入，請稍候或按「重新載入最新版」");
     return;
   }
   const blob = new Blob([JSON.stringify(getExportData(), null, 2) + "\n"], { type: "application/json" });
@@ -438,10 +515,7 @@ function copyJson() {
     .catch(() => alert("複製失敗"));
 }
 
-fetch("./knowledge.json")
-  .then((r) => r.ok ? r.json() : Promise.reject())
-  .then(ensureKnowledge)
-  .catch(() => {});
+loadFromUrl(false);
 </script>
 </body>
 </html>
