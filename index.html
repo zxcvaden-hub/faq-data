@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>廣運50週年｜FAQ 簡易編輯</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", sans-serif;
+  background: #f5f7fb;
+  color: #1e293b;
+  font-size: 16px;
+}
+header {
+  background: #c41e3a;
+  color: #fff;
+  padding: 20px 24px;
+}
+header h1 { margin: 0 0 6px; font-size: 22px; }
+header p { margin: 0; font-size: 15px; opacity: 0.95; line-height: 1.5; }
+.container { max-width: 900px; margin: auto; padding: 20px; }
+.mode-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+#status { font-size: 14px; font-weight: 700; }
+#status.loading { color: #b45309; }
+#status.ok { color: #047857; }
+#status.err { color: #b91c1c; }
+.mode-bar label { font-size: 14px; font-weight: 700; }
+.flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+@media (max-width: 700px) { .flow { grid-template-columns: 1fr; } }
+.flow-step {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.flow-step .num {
+  display: inline-block;
+  width: 32px; height: 32px;
+  line-height: 32px;
+  border-radius: 50%;
+  background: #c41e3a;
+  color: #fff;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.flow-step p { margin: 0; font-size: 14px; line-height: 1.5; }
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+button, .btn-file {
+  border: none;
+  background: #c41e3a;
+  color: #fff;
+  padding: 14px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.big { padding: 16px 24px; font-size: 17px; }
+button.secondary { background: #475569; }
+button.light { background: #fff; color: #c41e3a; border: 2px solid #c41e3a; }
+button.danger { background: #b91c1c; font-size: 14px; padding: 10px 14px; }
+.btn-file { display: inline-block; }
+.btn-file input { display: none; }
+.hint-box {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.search {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+.faq-item {
+  background: #fff;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  overflow: hidden;
+}
+.faq-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  user-select: none;
+}
+.faq-head:hover { background: #fafafa; }
+.faq-head .tag {
+  font-size: 12px;
+  background: #fee2e2;
+  color: #c41e3a;
+  padding: 4px 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.faq-head .title { flex: 1; font-weight: 700; font-size: 15px; }
+.faq-head .arrow { color: #94a3b8; }
+.faq-body { display: none; padding: 0 18px 18px; border-top: 1px solid #f1f5f9; }
+.faq-item.open .faq-body { display: block; }
+.faq-item.open .arrow { transform: rotate(180deg); }
+label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 14px 0 6px;
+  color: #334155;
+}
+label .tip { font-weight: 400; color: #64748b; font-size: 13px; }
+input, textarea, select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 16px;
+  font-family: inherit;
+}
+textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+.advanced-only { display: none; }
+body.advanced .advanced-only { display: block; }
+#jsonPanel { display: none; margin-top: 24px; }
+body.advanced #jsonPanel { display: block; }
+pre {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
+  overflow: auto;
+  max-height: 300px;
+  font-size: 11px;
+}
+.empty, .loading-box {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  background: #fff;
+  border-radius: 14px;
+  line-height: 1.7;
+}
+.loading-box { color: #b45309; }
+.local-only { display: none; }
+body.local-mode .local-only { display: inline-block; }
+body.local-mode .online-only { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>廣運50週年 · 問答內容編輯（簡易版）</h1>
+  <p id="headerSub">開啟後會自動載入最新問答，可直接修改或新增。完成後按「下載檔案」交給負責更新網站的同事。</p>
+</header>
+
+<div class="container">
+
+<div class="mode-bar">
+  <span id="status" class="loading">正在載入問答資料…</span>
+  <label><input type="checkbox" id="advancedToggle" /> 進階模式（工程師用）</label>
+</div>
+
+<div class="flow" id="flowSteps">
+  <div class="flow-step">
+    <div class="num">1</div>
+    <p><strong>自動載入</strong><br>網站已帶入最新問答</p>
+  </div>
+  <div class="flow-step">
+    <div class="num">2</div>
+    <p><strong>修改或新增</strong><br>點題目展開，或按「新增」</p>
+  </div>
+  <div class="flow-step">
+    <div class="num">3</div>
+    <p><strong>下載檔案</strong><br>傳給更新網站的人</p>
+  </div>
+</div>
+
+<div class="hint-box" id="handoffHint">
+  <strong>給非工程師同事：</strong> 不用準備任何檔案。打開此網頁後會<strong>自動載入</strong>現有問答，您只要改「問題」「關鍵字」「回答」，或按「＋ 新增一則問答」。完成後按「下載檔案」，用 Line 或 Email 傳給負責 <strong>chatbot 網站</strong> 的同事。
+</div>
+
+<div class="actions">
+  <button type="button" class="light big" id="btnAdd" disabled onclick="addFaq()">＋ 新增一則問答</button>
+  <button type="button" class="big" id="btnExport" disabled onclick="exportJson()">⬇ 下載檔案（knowledge.json）</button>
+  <button type="button" class="secondary local-only" onclick="document.getElementById('fileInput').click()">📂 從電腦開啟檔案</button>
+  <button type="button" class="secondary online-only" id="btnReload" onclick="loadFromUrl(true)">🔄 重新載入最新版</button>
+  <input type="file" id="fileInput" accept=".json" class="local-only" style="display:none" onchange="loadFromFile(event)" />
+</div>
+
+<input type="search" class="search" id="searchBox" placeholder="🔍 搜尋問題或分類…" oninput="renderList()" disabled />
+
+<div id="faqList">
+  <div class="loading-box">正在從網站載入問答，請稍候…</div>
+</div>
+
+<div id="jsonPanel" class="advanced-only">
+  <h2>JSON 預覽（進階）</h2>
+  <button type="button" class="secondary" onclick="copyJson()">複製 JSON</button>
+  <pre id="output">{}</pre>
+</div>
+
+</div>
+
+<script>
+let knowledge = null;
+let openIndex = -1;
+let loadPromise = null;
+
+const KNOWLEDGE_URL = "./knowledge.json";
+
+const CATEGORY_PRESETS = [
+  "基本資訊", "交通方式", "報到", "闖關", "餐飲", "親子手作流程",
+  "活動流程", "舞台", "摸彩與閉幕", "園區體驗", "園區服務",
+  "飲水與設施", "廣運50週年紀念品與闖關禮", "聯絡福利委員會", "轉人工", "其他", "系統建議"
+];
+
+const isHttp = location.protocol === "http:" || location.protocol === "https:";
+
+document.getElementById("advancedToggle").addEventListener("change", (e) => {
+  document.body.classList.toggle("advanced", e.target.checked);
+  renderList();
+});
+
+if (!isHttp) {
+  document.body.classList.add("local-mode");
+  document.getElementById("headerSub").textContent =
+    "本機開啟時請用下方「從電腦開啟檔案」選 knowledge.json；建議同事改用線上網址，可自動載入。";
+  document.querySelector("#flowSteps .flow-step:first-child p").innerHTML =
+    "<strong>開啟檔案</strong><br>選 knowledge.json";
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function setStatus(text, kind) {
+  const el = document.getElementById("status");
+  el.textContent = text;
+  el.className = kind || "";
+}
+
+function setUiReady(ready) {
+  document.getElementById("btnAdd").disabled = !ready;
+  document.getElementById("btnExport").disabled = !ready;
+  document.getElementById("searchBox").disabled = !ready;
+}
+
+function ensureKnowledge(data) {
+  if (!data || typeof data !== "object") throw new Error("檔案格式不對");
+  if (!Array.isArray(data.faqs)) data.faqs = [];
+  knowledge = data;
+  setStatus("已載入 " + knowledge.faqs.length + " 則問答（可直接編輯）", "ok");
+  setUiReady(true);
+  renderList();
+}
+
+function showListMessage(html, className) {
+  document.getElementById("faqList").innerHTML =
+    '<div class="' + (className || "empty") + '">' + html + "</div>";
+}
+
+function loadFromUrl(force) {
+  if (!isHttp) {
+    showListMessage(
+      "請使用線上網址開啟此頁，或按「從電腦開啟檔案」選擇 knowledge.json",
+      "empty"
+    );
+    setStatus("本機模式：請手動開啟檔案", "err");
+    return Promise.resolve(false);
+  }
+
+  setStatus(force ? "正在重新載入…" : "正在載入問答資料…", "loading");
+  setUiReady(false);
+  showListMessage("正在從網站載入問答，請稍候…", "loading-box");
+
+  const url = KNOWLEDGE_URL + "?v=" + Date.now();
+  loadPromise = fetch(url, { cache: "no-store" })
+    .then((r) => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
+    .then((data) => {
+      ensureKnowledge(data);
+      return true;
+    })
+    .catch((e) => {
+      knowledge = null;
+      setUiReady(false);
+      setStatus("載入失敗，請按「重新載入」或聯絡負責人", "err");
+      showListMessage(
+        "無法載入問答資料。<br><br>請確認網址正確，或請負責人更新 GitHub 上的 <strong>knowledge.json</strong>。<br><br>" +
+        "<button type=\"button\" class=\"big\" onclick=\"loadFromUrl(true)\">再試一次</button>",
+        "empty"
+      );
+      console.error("load knowledge.json failed", e);
+      return false;
+    });
+
+  return loadPromise;
+}
+
+function loadFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      ensureKnowledge(JSON.parse(reader.result));
+    } catch (e) {
+      alert("無法讀取檔案，請確認選的是 knowledge.json\n\n" + e.message);
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+  event.target.value = "";
+}
+
+function categoryOptions(selected) {
+  return CATEGORY_PRESETS.map((c) =>
+    `<option value="${escapeHtml(c)}"${c === selected ? " selected" : ""}>${escapeHtml(c)}</option>`
+  ).join("") + `<option value="_custom"${!CATEGORY_PRESETS.includes(selected) && selected ? " selected" : ""}>其他（自行輸入）</option>`;
+}
+
+async function addFaq() {
+  if (!knowledge && loadPromise) await loadPromise;
+  if (!knowledge) {
+    alert("問答尚未載入完成，請稍候或按「重新載入最新版」");
+    return;
+  }
+  knowledge.faqs.unshift({
+    id: "new_" + Date.now(),
+    category: "其他",
+    question: "新問題（請修改）",
+    keywords: [],
+    answer: "請輸入回答內容",
+    answerHtml: ""
+  });
+  openIndex = 0;
+  renderList();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function removeFaq(index) {
+  if (!confirm("確定要刪除這一則問答嗎？")) return;
+  knowledge.faqs.splice(index, 1);
+  openIndex = -1;
+  renderList();
+}
+
+function toggleFaq(index) {
+  openIndex = openIndex === index ? -1 : index;
+  renderList();
+}
+
+function saveField(index, field, value) {
+  if (!knowledge || !knowledge.faqs[index]) return;
+  if (field === "keywords") {
+    knowledge.faqs[index].keywords = value.split(/[,，]/).map((v) => v.trim()).filter(Boolean);
+  } else {
+    knowledge.faqs[index][field] = value;
+  }
+  renderJson();
+  setStatus("已儲存變更（共 " + knowledge.faqs.length + " 則）· 記得下載檔案", "ok");
+}
+
+function getExportData() {
+  const out = JSON.parse(JSON.stringify(knowledge));
+  out.faqs = out.faqs.map((faq) => {
+    const item = { ...faq };
+    if (!item.answerHtml) delete item.answerHtml;
+    if (!item.id) item.id = "faq_" + Date.now();
+    return item;
+  });
+  return out;
+}
+
+function renderJson() {
+  const pre = document.getElementById("output");
+  if (!knowledge) { pre.textContent = "{}"; return; }
+  pre.textContent = JSON.stringify(getExportData(), null, 2);
+}
+
+function renderList() {
+  if (!knowledge) return;
+
+  const q = document.getElementById("searchBox").value.trim().toLowerCase();
+  const list = document.getElementById("faqList");
+  const advanced = document.body.classList.contains("advanced");
+  list.innerHTML = "";
+
+  const items = knowledge.faqs
+    .map((faq, index) => ({ faq, index }))
+    .filter(({ faq }) => {
+      if (!q) return true;
+      const hay = [faq.question, faq.category, (faq.keywords || []).join(" ")].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">目前沒有問答。請按上方「＋ 新增一則問答」。</div>';
+    renderJson();
+    return;
+  }
+
+  items.forEach(({ faq, index }) => {
+    const isOpen = openIndex === index;
+    const div = document.createElement("div");
+    div.className = "faq-item" + (isOpen ? " open" : "");
+
+    const kw = (faq.keywords || []).join("， ");
+    const cat = faq.category || "未分類";
+    const customCat = !CATEGORY_PRESETS.includes(cat);
+
+    let bodyHtml = `
+      <label>分類 <span class="tip">（選最接近的項目）</span></label>
+      <select data-idx="${index}" data-field="categorySelect" onchange="onCategorySelect(this)">
+        ${categoryOptions(customCat ? "" : cat)}
+      </select>
+      <input data-idx="${index}" data-field="category" class="cat-custom" style="display:${customCat || cat === '_custom' ? 'block' : 'none'}" placeholder="輸入分類名稱" value="${escapeHtml(customCat ? cat : "")}" onchange="saveField(${index},'category',this.value)" />
+
+      <label>問題 <span class="tip">（來賓可能會這樣問）</span></label>
+      <input data-idx="${index}" value="${escapeHtml(faq.question)}" oninput="saveField(${index},'question',this.value)" />
+
+      <label>關鍵字 <span class="tip">（用逗號或頓號分開，例如：交通，怎麼去，停車）</span></label>
+      <textarea data-idx="${index}" oninput="saveField(${index},'keywords',this.value)">${escapeHtml(kw)}</textarea>
+
+      <label>回答 <span class="tip">（給來賓看的說明，可多行）</span></label>
+      <textarea data-idx="${index}" oninput="saveField(${index},'answer',this.value)">${escapeHtml(faq.answer)}</textarea>
+    `;
+
+    if (advanced) {
+      bodyHtml += `
+        <div class="advanced-only" style="display:block">
+          <label>進階：ID（勿隨意改）</label>
+          <input value="${escapeHtml(faq.id)}" oninput="saveField(${index},'id',this.value)" />
+          <label>進階：HTML 回答（交通卡片用，可留空）</label>
+          <textarea style="min-height:80px;font-size:13px" oninput="saveField(${index},'answerHtml',this.value)">${escapeHtml(faq.answerHtml || "")}</textarea>
+        </div>
+      `;
+    }
+
+    bodyHtml += `<button type="button" class="danger" onclick="removeFaq(${index})">刪除這則問答</button>`;
+
+    div.innerHTML = `
+      <div class="faq-head" onclick="toggleFaq(${index})">
+        <span class="tag">${escapeHtml(cat)}</span>
+        <span class="title">${escapeHtml(faq.question || "（未命名問題）")}</span>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="faq-body">${bodyHtml}</div>
+    `;
+    list.appendChild(div);
+  });
+
+  renderJson();
+}
+
+function onCategorySelect(sel) {
+  const index = Number(sel.dataset.idx);
+  const custom = sel.parentElement.querySelector(".cat-custom");
+  if (sel.value === "_custom") {
+    custom.style.display = "block";
+    custom.focus();
+  } else {
+    custom.style.display = "none";
+    saveField(index, "category", sel.value);
+  }
+}
+
+function exportJson() {
+  if (!knowledge) {
+    alert("問答尚未載入，請稍候或按「重新載入最新版」");
+    return;
+  }
+  const blob = new Blob([JSON.stringify(getExportData(), null, 2) + "\n"], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "knowledge.json";
+  a.click();
+  alert("已下載 knowledge.json！\n\n請將檔案傳給負責更新網站的同事。\n（對方會放入 chatbot2 資料夾並更新活動網頁）");
+}
+
+function copyJson() {
+  if (!knowledge) return;
+  navigator.clipboard.writeText(JSON.stringify(getExportData(), null, 2))
+    .then(() => alert("已複製"))
+    .catch(() => alert("複製失敗"));
+}
+
+loadFromUrl(false);
+</script>
+</body>
+</html>
